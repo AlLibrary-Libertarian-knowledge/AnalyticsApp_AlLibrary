@@ -40,7 +40,13 @@ class Command(BaseCommand):
             self._generate_timeline_and_transfers(nodes, docs, stress_doc)
             self.stdout.write(self.style.SUCCESS("✓ Linha do tempo gerada (fins de semana, pausas em dias úteis, transferências anônimas e falhas reais)."))
 
-        self.stdout.write(self.style.SUCCESS("\n[SEEDED COM SUCESSO] Cenário real e irrefutável para a banca do TCC."))
+            labeled = TransferSession.objects.update(is_simulated=True)
+            self.stdout.write(self.style.WARNING(
+                f"✓ {labeled} TransferSession marcadas como is_simulated=True "
+                "(distinguir do ingest medido no desktop)."
+            ))
+
+        self.stdout.write(self.style.SUCCESS("\n[SEEDED COM SUCESSO] Cenário simulado rotulado; telemetria medida entra via POST /api/v1/telemetry/ingest/."))
 
     def _create_realistic_nodes(self):
         # Os 14 participantes voluntários reais do projeto

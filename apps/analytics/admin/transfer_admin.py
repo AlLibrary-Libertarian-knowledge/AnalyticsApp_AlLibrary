@@ -13,10 +13,11 @@ class TransferSessionAdmin(AlLibraryAdminMixin, admin.ModelAdmin):
         'parallel_seeders', 
         'average_speed_display', 
         'peak_speed_display', 
-        'tor_circuit_latency_ms', 
-        'duration_seconds'
+        'tor_circuit_latency_ms',
+        'duration_seconds',
+        'is_simulated',
     )
-    list_filter = ('status', 'transfer_type', 'parallel_seeders')
+    list_filter = ('status', 'transfer_type', 'parallel_seeders', 'is_simulated')
     search_fields = ('document__title', 'document__content_hash')
     date_hierarchy = 'started_at'
     ordering = ('-started_at',)

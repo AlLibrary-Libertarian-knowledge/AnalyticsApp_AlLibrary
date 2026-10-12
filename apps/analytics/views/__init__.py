@@ -6,6 +6,7 @@ from apps.analytics.views.overview_views import (
     SpeedBenchmarkAPIView,
     DailyTimelineAPIView
 )
+from apps.analytics.views.telemetry_ingest_views import TelemetryIngestAPIView
 
 __all__ = [
     'PeerNodeViewSet',
@@ -14,4 +15,5 @@ __all__ = [
     'AnalyticsOverviewAPIView',
     'SpeedBenchmarkAPIView',
     'DailyTimelineAPIView',
+    'TelemetryIngestAPIView',
 ]

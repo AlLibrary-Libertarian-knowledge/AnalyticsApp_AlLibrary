@@ -4,6 +4,11 @@ from apps.analytics.models.swarm import SwarmSnapshot
 from apps.analytics.models.transfer import TransferSession
 from apps.analytics.models.chunk_metric import ChunkPerformanceLog
 from apps.analytics.models.network_metric import DailyNetworkMetric
+from apps.analytics.models.experiment_events import (
+    LookupEvent,
+    GossipPropagationEvent,
+    ChurnEvent,
+)
 
 __all__ = [
     'PeerNode',
@@ -12,4 +17,7 @@ __all__ = [
     'TransferSession',
     'ChunkPerformanceLog',
     'DailyNetworkMetric',
+    'LookupEvent',
+    'GossipPropagationEvent',
+    'ChurnEvent',
 ]

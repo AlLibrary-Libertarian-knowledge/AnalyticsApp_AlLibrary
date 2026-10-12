@@ -7,7 +7,8 @@ from apps.analytics.models import (
     AcademicDocument,
     TransferSession,
     DailyNetworkMetric,
-    SwarmSnapshot
+    SwarmSnapshot,
+    ChunkPerformanceLog,
 )
 
 class AnalyticsOverviewAPIView(APIView):
@@ -23,6 +24,8 @@ class AnalyticsOverviewAPIView(APIView):
         total_documents = AcademicDocument.objects.count()
         total_transfers = TransferSession.objects.count()
         completed_transfers = TransferSession.objects.filter(status='COMPLETED').count()
+        simulated_transfers = TransferSession.objects.filter(is_simulated=True).count()
+        measured_transfers = TransferSession.objects.filter(is_simulated=False).count()
         
         transfers_agg = TransferSession.objects.filter(status='COMPLETED').aggregate(
             total_bytes=Sum('bytes_transferred'),
@@ -63,13 +66,36 @@ class AnalyticsOverviewAPIView(APIView):
                 "online_nodes": online_nodes,
                 "total_academic_documents": total_documents,
                 "total_transfers": total_transfers,
+                "simulated_transfers": simulated_transfers,
+                "measured_transfers": measured_transfers,
                 "success_rate_percent": round((completed_transfers / total_transfers * 100) if total_transfers > 0 else 100, 1),
                 "total_data_transferred_gb": total_gb,
                 "avg_download_speed_kbps": avg_speed_kbps,
                 "avg_download_speed_mbps": avg_speed_mbps,
                 "peak_speed_mbps": round((transfers_agg['peak_speed'] or 0) / 1024, 2),
                 "avg_tor_latency_ms": round(transfers_agg['avg_latency'] or 0, 1),
-                "chunk_integrity_rate_percent": 99.6
+                "chunk_integrity_rate_percent": (
+                    round(
+                        100.0
+                        * ChunkPerformanceLog.objects.filter(verification_passed=True).count()
+                        / ChunkPerformanceLog.objects.count(),
+                        2,
+                    )
+                    if ChunkPerformanceLog.objects.exists()
+                    else (
+                        round(
+                            100.0
+                            * (
+                                1
+                                - TransferSession.objects.filter(chunk_failures__gt=0).count()
+                                / total_transfers
+                            ),
+                            2,
+                        )
+                        if total_transfers
+                        else None
+                    )
+                ),
             },
             "scientific_benchmarks": {
                 "single_seed_avg_kbps": round(single_seed_speed, 1),

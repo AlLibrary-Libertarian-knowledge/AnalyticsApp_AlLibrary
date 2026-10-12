@@ -35,4 +35,6 @@ class TransferSessionSerializer(serializers.ModelSerializer):
             'tor_circuit_latency_ms',
             'started_at',
             'completed_at',
+            'is_simulated',
+            'chunk_failures',
         ]

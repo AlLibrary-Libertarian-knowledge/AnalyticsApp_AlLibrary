@@ -43,6 +43,23 @@ class TransferSession(BaseModel):
     started_at = models.DateTimeField(db_index=True, verbose_name="Início da Transferência")
     completed_at = models.DateTimeField(null=True, blank=True, verbose_name="Conclusão")
 
+    is_simulated = models.BooleanField(
+        default=False,
+        db_index=True,
+        verbose_name="Simulado (seed)",
+        help_text="True para dados gerados por seed_tcc_analytics; False para telemetria medida no desktop.",
+    )
+    chunk_failures = models.IntegerField(
+        default=0,
+        verbose_name="Falhas de chunk",
+        help_text="Tentativas de chunk que falharam (decrypt/rede) antes do sucesso ou abandono.",
+    )
+    retries = models.IntegerField(
+        default=0,
+        verbose_name="Retries",
+        help_text="Reintentos agregados (announce/chunk) na sessão.",
+    )
+
     class Meta:
         verbose_name = "Sessão de Transferência"
         verbose_name_plural = "Sessões de Transferência"
