@@ -21,18 +21,53 @@ from apps.analytics.serializers.telemetry_ingest_serializer import (
 )
 
 
-def _document_for_hash(content_hash: str, file_size: int, total_chunks: int, chunk_size: int) -> AcademicDocument:
-    existing = AcademicDocument.objects.filter(content_hash=content_hash.lower()).first()
+# Cap.6 / lobby — known academic documents (Tor-measured originals).
+KNOWN_DOCUMENT_TITLES: dict[str, str] = {
+    "472650b81a7b23d44c417a8625c6462d5e54b3b22b49b13e500d49a17c826e00": (
+        "An_Historico_geographical_Description_of.pdf"
+    ),
+    "f27b5cb292a268fa70ef3cf211f2cbc2cb31d59eefa1b4053e74347f18bf91c4": (
+        "Don Quixote - Miguel De Cervantes.pdf"
+    ),
+    "fa882d6974416da1319ac21569e3d76936575506aa875ce70abe28b7922c38b7": (
+        "Fahrenheit 451 (Ray Bradbury) (z-library.sk, 1lib.sk, z-lib.sk).pdf"
+    ),
+}
+
+
+def _resolve_title(content_hash: str, file_name: str = "", document_title: str = "") -> str:
+    ch = (content_hash or "").lower()
+    for candidate in (document_title, file_name, KNOWN_DOCUMENT_TITLES.get(ch, "")):
+        title = (candidate or "").strip()
+        if title:
+            return title[:255]
+    return f"Measured transfer {ch[:12]}"
+
+
+def _document_for_hash(
+    content_hash: str,
+    file_size: int,
+    total_chunks: int,
+    chunk_size: int,
+    file_name: str = "",
+    document_title: str = "",
+) -> AcademicDocument:
+    ch = content_hash.lower()
+    title = _resolve_title(ch, file_name, document_title)
+    existing = AcademicDocument.objects.filter(content_hash=ch).first()
     if existing:
+        # Upgrade placeholder titles when a real name arrives.
+        if existing.title.startswith("Measured transfer") and title and not title.startswith("Measured transfer"):
+            AcademicDocument.objects.filter(pk=existing.pk).update(title=title)
+            existing.title = title
         return existing
-    short = content_hash.lower()[:12]
     return AcademicDocument.objects.create(
-        title=f"Measured transfer {short}",
+        title=title,
         author="anonymous",
         category='SEGURANCA',
         file_type='PDF',
         file_size_bytes=max(file_size, 1),
-        content_hash=content_hash.lower(),
+        content_hash=ch,
         chunk_size_bytes=chunk_size,
         total_chunks=max(total_chunks, 1),
     )
@@ -44,6 +79,8 @@ def _ingest_transfer(data: dict) -> str:
         data['bytes_transferred'],
         data['total_chunks'],
         data.get('chunk_size') or 262144,
+        file_name=data.get('file_name') or '',
+        document_title=data.get('document_title') or '',
     )
     if data['status'] == 'COMPLETED':
         AcademicDocument.objects.filter(pk=doc.pk).update(total_downloads=doc.total_downloads + 1)
@@ -174,6 +211,8 @@ class TelemetryIngestAPIView(APIView):
 
         created_ids = []
         errors = []
+        # Link chunk events in the same batch to the transfer just created for that hash.
+        batch_transfer_by_hash: dict[str, str] = {}
         for idx, item in enumerate(items):
             if not isinstance(item, dict):
                 errors.append({'index': idx, 'errors': 'not an object'})
@@ -185,9 +224,17 @@ class TelemetryIngestAPIView(APIView):
                     if not ser.is_valid():
                         errors.append({'index': idx, 'errors': ser.errors})
                         continue
-                    created_ids.append(_ingest_transfer(ser.validated_data))
+                    tid = _ingest_transfer(ser.validated_data)
+                    created_ids.append(tid)
+                    ch = (ser.validated_data.get('content_hash') or '').lower()
+                    if ch:
+                        batch_transfer_by_hash[ch] = tid
                 elif et == 'chunk':
-                    ser = ChunkIngestSerializer(data=item)
+                    payload = dict(item)
+                    ch = (payload.get('content_hash') or '').lower()
+                    if not payload.get('transfer_id') and ch in batch_transfer_by_hash:
+                        payload['transfer_id'] = batch_transfer_by_hash[ch]
+                    ser = ChunkIngestSerializer(data=payload)
                     if not ser.is_valid():
                         errors.append({'index': idx, 'errors': ser.errors})
                         continue

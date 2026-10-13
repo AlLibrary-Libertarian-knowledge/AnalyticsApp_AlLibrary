@@ -15,4 +15,4 @@ class TransferSessionViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [AllowAny]
     pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['status', 'transfer_type', 'parallel_seeders']
+    filterset_fields = ['status', 'transfer_type', 'parallel_seeders', 'is_simulated']

@@ -4,6 +4,8 @@ from rest_framework import serializers
 class TransferIngestSerializer(serializers.Serializer):
     event_type = serializers.ChoiceField(choices=['transfer'], required=False, default='transfer')
     content_hash = serializers.RegexField(regex=r'^[a-fA-F0-9]{32,64}$', max_length=64)
+    file_name = serializers.CharField(max_length=255, required=False, allow_blank=True, default='')
+    document_title = serializers.CharField(max_length=255, required=False, allow_blank=True, default='')
     status = serializers.ChoiceField(
         choices=['COMPLETED', 'FAILED', 'INTERRUPTED', 'TIMED_OUT'],
         default='COMPLETED',

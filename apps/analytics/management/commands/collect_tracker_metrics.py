@@ -81,13 +81,30 @@ class Command(BaseCommand):
                 created += 1
 
         for f in lobby.get("files", []):
-            ch = f.get("content_hash")
+            ch = (f.get("content_hash") or "").lower()
             if not ch:
                 continue
-            doc = AcademicDocument.objects.filter(content_hash=ch.lower()).first()
-            if not doc:
-                continue
+            name = (f.get("name") or "Lobby file")[:300]
+            size = int(f.get("size") or 0)
             seeds = int(f.get("peer_count") or len(f.get("peers") or []))
+            ext = name.rsplit(".", 1)[-1].upper() if "." in name else "PDF"
+            file_type = ext if ext in ("PDF", "EPUB", "DOCX") else "PDF"
+            chunk_size = 524288
+            total_chunks = max(1, (size + chunk_size - 1) // chunk_size) if size else 1
+            doc, _ = AcademicDocument.objects.update_or_create(
+                content_hash=ch,
+                defaults={
+                    "title": name,
+                    "author": "Rede P2P (lobby)",
+                    "category": "COMPUTACAO",
+                    "file_type": file_type,
+                    "file_size_bytes": size,
+                    "chunk_size_bytes": chunk_size,
+                    "total_chunks": total_chunks,
+                    "swarm_link": (f.get("swarm_link") or "")[:600],
+                    "total_seeds_active": max(seeds, 1),
+                },
+            )
             health = "CRITICAL"
             if seeds >= 5:
                 health = "EXCELLENT"
